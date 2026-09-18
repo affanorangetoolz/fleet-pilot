@@ -3,20 +3,28 @@ on:
   pull_request:
     branches: [main]
 
+# One run per PR. A new push cancels the run still in progress for the same PR,
+# so superseded commits stop billing minutes.
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
 # Least privilege. A compromised action should not be able to push or deploy.
 permissions:
-  contents: read
-  pull-requests: write
+  contents: read  # checkout and the read-only gates need nothing more
 
 jobs:
   quality:
+    name: quality
     runs-on: ubuntu-latest
     steps:
       # Pin third-party actions to a full commit SHA, never a tag.
       # Tags are mutable; the tj-actions/changed-files compromise moved tags to
       # malicious code and leaked CI secrets across thousands of repos.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - run: pnpm i --frozen-lockfile
       - run: pnpm lint
@@ -31,7 +39,9 @@ jobs:
       - name: mutation
         # DEFERRED for pilot — no coverage:delta/stryker script yet. Non-blocking, NOT removed. See issue #1.
         continue-on-error: true
-        run: pnpm stryker run --mutate "$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.ts$' | tr '\n' ',')"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: pnpm stryker run --mutate "$(git diff --name-only "origin/$BASE_REF"...HEAD | grep -E '\.ts$' | tr '\n' ',')"
 
       - name: policy-guard
         env:
@@ -40,23 +50,39 @@ jobs:
         run: ./scripts/policy-guard.sh
 
   actions-security:
+    name: actions-security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: pipx run zizmor .github/workflows
+        with:
+          persist-credentials: false
+      # zizmor pinned to an exact version (1.30.1): an unpinned linter is the same
+      # supply-chain risk as an unpinned action, and a new release can change the
+      # findings without any change in this repo.
+      - run: pipx run zizmor==1.30.1 .github/workflows
 
   ledger:
+    name: ledger
     needs: [quality]
     if: always()
     runs-on: ubuntu-latest
+    # A job-level block replaces the workflow's, so every scope this job uses is listed.
+    permissions:
+      contents: read        # checkout
+      actions: read         # run_ledger.py reads this run's billable time (actions/runs/{id}/timing)
+      pull-requests: write  # gh pr comment posts the RUN LEDGER on the PR
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: meter this CI run and post the ledger
         env:
           FLEET_JOB_ID: pr-${{ github.event.pull_request.number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          python3 scripts/meter.py actions_run ${{ github.run_id }}
+          python3 scripts/meter.py actions_run "$RUN_ID"
           python3 scripts/run_ledger.py "$FLEET_JOB_ID" | tee ledger.txt
-          gh pr comment ${{ github.event.pull_request.number }} --body-file ledger.txt
+          gh pr comment "$PR_NUMBER" --body-file ledger.txt
