@@ -6,17 +6,22 @@ This prices the session transcript at API rates and hard-stops past the cap.
 
 This measures the WHOLE SESSION, not one job. If several jobs run in one
 Claude Code session, they share this cap.
+
+Fails open: if it can't find the rates table, read the payload, or price the
+transcript, it skips the measurement and exits 0. A meter that can't find
+itself must not block work. FLEET_HOOKS_OFF=1 turns it off entirely.
 """
 import json
+import os
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent.parent
-RATES = json.loads((HERE / "scripts" / "rates.json").read_text())
-CAP = RATES["budgets"]["per_job_shadow_usd_hard"]
+# settings.json runs this by absolute path under the main checkout's root,
+# so this resolves there even when the session is inside a linked worktree.
+RATES_FILE = Path(__file__).resolve().parent.parent / "scripts" / "rates.json"
 
 
-def session_usd(transcript: Path) -> float:
+def session_usd(transcript: Path, prices: dict) -> float:
     # The transcript writes one line per content block and repeats the message's
     # usage on each, so keep one usage record per message id or we overcount.
     per_message: dict[str, tuple[str, dict]] = {}
@@ -29,7 +34,6 @@ def session_usd(transcript: Path) -> float:
             continue
         per_message[msg.get("id") or f"line-{n}"] = (msg.get("model") or "", msg["usage"])
 
-    prices = RATES["anthropic_api"]
     total = 0.0
     for model, u in per_message.values():
         m = prices.get(model) or prices["claude-sonnet-5"]
@@ -41,14 +45,18 @@ def session_usd(transcript: Path) -> float:
 
 
 def main() -> int:
+    if os.environ.get("FLEET_HOOKS_OFF") == "1":
+        return 0
     try:
+        rates = json.loads(RATES_FILE.read_text())
+        cap = rates["budgets"]["per_job_shadow_usd_hard"]
         payload = json.load(sys.stdin)
-        spent = session_usd(Path(payload["transcript_path"]))
+        spent = session_usd(Path(payload["transcript_path"]), rates["anthropic_api"])
     except Exception:
-        return 0  # no payload, no transcript_path, or unreadable transcript
-    if spent > CAP:
+        return 0  # no rates table, no payload, no transcript_path, or unreadable transcript
+    if spent > cap:
         print(f"BUDGET STOP: this session has consumed ~${spent:.2f} of token value "
-              f"(hard cap ${CAP:.2f}). Halt, write the RUN LEDGER, and report to Affan "
+              f"(hard cap ${cap:.2f}). Halt, write the RUN LEDGER, and report to Affan "
               f"before continuing. Do not retry.", file=sys.stderr)
         return 2
     return 0

@@ -1,5 +1,5 @@
 {
-  "_comment": "Fleet crew guardrails. Hooks fire identically in interactive and headless/CI mode.",
+  "_comment": "Fleet crew guardrails. Hooks fire identically in interactive and headless/CI mode. Each hook command resolves the MAIN checkout root via git's common dir, so hooks work from inside linked worktrees (.claude/worktrees/*).",
   "permissions": {
     "deny": [
       "Write(./AGENTS.md)",
@@ -21,19 +21,19 @@
     "PreToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{ "type": "command", "command": "./hooks/protect-paths.sh" }]
+        "hooks": [{ "type": "command", "command": "r=$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && r=$(dirname \"$r\") || r=\"${CLAUDE_PROJECT_DIR:-.}\"; f=\"$r/hooks/protect-paths.sh\"; [ -f \"$f\" ] || { echo \"BLOCKED: path guard not found at $f. Failing closed; the edit was not allowed.\" >&2; exit 2; }; exec bash \"$f\"" }]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "python3 ./hooks/token-budget.py" }]
+        "hooks": [{ "type": "command", "command": "r=$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && r=$(dirname \"$r\") || r=\"${CLAUDE_PROJECT_DIR:-.}\"; f=\"$r/hooks/token-budget.py\"; [ -f \"$f\" ] || exit 0; exec python3 \"$f\"" }]
       }
     ],
     "Stop": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "python3 ./hooks/session-ledger.py" }]
+        "hooks": [{ "type": "command", "command": "r=$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && r=$(dirname \"$r\") || r=\"${CLAUDE_PROJECT_DIR:-.}\"; f=\"$r/hooks/session-ledger.py\"; [ -f \"$f\" ] || exit 0; exec python3 \"$f\"" }]
       }
     ]
   }
