@@ -1,0 +1,62 @@
+{
+  "_comment": "All prices USD, 2026 snapshot. Purser re-verifies quarterly. Edit here only — never hardcode a price in a bot prompt.",
+  "_verified_on": "2026-09-18",
+
+  "github_actions": {
+    "ubuntu_per_min": 0.006,
+    "windows_per_min": 0.010,
+    "macos_per_min": 0.062,
+    "storage_per_gb_month": 0.25,
+    "note": "Private repos only. Public repos are free — cash cost is 0."
+  },
+
+  "fly_io": {
+    "shared_cpu_1x_256mb_per_sec": 0.00000077,
+    "shared_cpu_1x_512mb_per_sec": 0.00000154,
+    "shared_cpu_2x_1gb_per_sec": 0.00000424,
+    "builder_per_sec": 0.00000154,
+    "volume_per_gb_month": 0.15,
+    "egress_na_eu_per_gb": 0.02,
+    "egress_apac_per_gb": 0.04
+  },
+
+  "cloudflare_r2": {
+    "storage_per_gb_month": 0.015,
+    "class_a_per_million_ops": 4.50,
+    "class_b_per_million_ops": 0.36,
+    "egress_per_gb": 0.0
+  },
+
+  "anthropic_api": {
+    "_note": "CASH only when a job runs on an API key (Batch jobs, CI headless with API billing). Work on the Max subscription is SHADOW cost, not cash.",
+    "claude-opus-5":    {"in": 5.00,  "out": 25.00, "cache_write_mult": 1.25, "cache_read_mult": 0.10},
+    "claude-sonnet-5":  {"in": 2.00,  "out": 10.00, "cache_write_mult": 1.25, "cache_read_mult": 0.10},
+    "claude-haiku-4-5": {"in": 1.00,  "out": 5.00,  "cache_write_mult": 1.25, "cache_read_mult": 0.10},
+    "batch_discount": 0.50
+  },
+
+  "overflow_agents": {
+    "codex_credit_usd": 0.01,
+    "copilot_credit_usd": 0.01,
+    "devin_acu_usd": 2.25,
+    "jules_task_usd": 0.0
+  },
+
+  "external_apis": {
+    "_note": "Scout's allowlisted paid sources. Add your own keys/rates. qty is counted in calls unless stated.",
+    "serp_search": 0.003,
+    "dataforseo_task": 0.0006,
+    "posthog_export": 0.0,
+    "stripe_api": 0.0,
+    "firecrawl_page": 0.001
+  },
+
+  "budgets": {
+    "per_job_cash_usd_soft": 0.50,
+    "per_job_cash_usd_hard": 0.50,
+    "per_job_shadow_usd_soft": 3.00,
+    "per_job_shadow_usd_hard": 8.00,
+    "fleet_month_cash_usd_hard": 150.00,
+    "max_concurrent_worktrees": 3
+  }
+}

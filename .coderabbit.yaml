@@ -1,0 +1,24 @@
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "src/**/*.ts"
+      instructions: >
+        Flag any new `any`, unhandled promise, or missing input validation.
+        Verify every tRPC procedure taking an ID checks that the caller owns the
+        record (object-level authorization). Do NOT require docstrings — comment
+        on them at most; docstring presence is not a merge gate here.
+    - path: "drizzle/**"
+      instructions: >
+        Flag destructive migrations with no reversible path. Flag any migration
+        that would lock a table on a live product.
+    - path: "src/**/*webhook*"
+      instructions: Require signature verification on every inbound webhook.
+  auto_merge:
+    enabled: true
+    conditions: >
+      docs_only AND NOT touches(AGENTS.md, CLAUDE.md, CODEOWNERS,
+      .coderabbit.yaml, fly.toml, .github/, .claude/, hooks/, scripts/rates.json)

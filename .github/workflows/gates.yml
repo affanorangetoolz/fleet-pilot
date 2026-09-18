@@ -1,0 +1,58 @@
+name: gates
+on:
+  pull_request:
+    branches: [main]
+
+# Least privilege. A compromised action should not be able to push or deploy.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      # Pin third-party actions to a full commit SHA, never a tag.
+      # Tags are mutable; the tj-actions/changed-files compromise moved tags to
+      # malicious code and leaked CI secrets across thousands of repos.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test -- --coverage
+
+      - name: coverage-delta
+        run: pnpm coverage:delta --min 0.90   # changed lines only, not whole-repo
+
+      - name: mutation
+        run: pnpm stryker run --mutate "$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.ts$' | tr '\n' ',')"
+
+      - name: policy-guard
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: ./scripts/policy-guard.sh
+
+  actions-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: pipx run zizmor .github/workflows
+
+  ledger:
+    needs: [quality]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: meter this CI run and post the ledger
+        env:
+          FLEET_JOB_ID: pr-${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/meter.py actions_run ${{ github.run_id }}
+          python3 scripts/run_ledger.py "$FLEET_JOB_ID" | tee ledger.txt
+          gh pr comment ${{ github.event.pull_request.number }} --body-file ledger.txt

@@ -1,0 +1,11 @@
+# Agents may not approve changes to the rules that govern agents.
+*                      @affanorangetoolz
+/AGENTS.md             @affanorangetoolz
+/CLAUDE.md             @affanorangetoolz
+/.github/              @affanorangetoolz
+/.claude/              @affanorangetoolz
+/hooks/                @affanorangetoolz
+/.coderabbit.yaml      @affanorangetoolz
+/fly.toml              @affanorangetoolz
+/scripts/rates.json    @affanorangetoolz
+/drizzle/              @affanorangetoolz

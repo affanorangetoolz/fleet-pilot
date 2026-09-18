@@ -1,0 +1,40 @@
+{
+  "_comment": "Fleet crew guardrails. Hooks fire identically in interactive and headless/CI mode.",
+  "permissions": {
+    "deny": [
+      "Write(./AGENTS.md)",
+      "Write(./CLAUDE.md)",
+      "Write(./CODEOWNERS)",
+      "Write(./.coderabbit.yaml)",
+      "Write(./fly.toml)",
+      "Write(./.github/**)",
+      "Write(./.claude/**)",
+      "Write(./hooks/**)",
+      "Write(./scripts/rates.json)",
+      "Bash(git push --force*)",
+      "Bash(gh pr merge*)",
+      "Bash(fly secrets*)",
+      "Bash(rm -rf*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [{ "type": "command", "command": "./hooks/protect-paths.sh" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": "python3 ./hooks/token-budget.py" }]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": "python3 ./hooks/session-ledger.py" }]
+      }
+    ]
+  }
+}

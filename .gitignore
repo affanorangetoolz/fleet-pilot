@@ -3,3 +3,5 @@ dist/
 drizzle/
 .env
 *.log
+.fleet/
+__pycache__/
