@@ -1,5 +1,5 @@
 # Brief: Short links actually redirect
-Status: DRAFT
+Status: APPROVED 2026-09-18
 Product: fleet-pilot
 Problem: A signed-in user can create a short link today, but anyone who opens it just gets
 the app shell — there is no server route that looks up the slug and sends the visitor to
