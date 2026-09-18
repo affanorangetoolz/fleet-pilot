@@ -5,3 +5,5 @@ drizzle/
 *.log
 .fleet/
 __pycache__/
+
+.claude/worktrees/
