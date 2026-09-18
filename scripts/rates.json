@@ -52,7 +52,7 @@
   },
 
   "budgets": {
-    "per_job_cash_usd_soft": 0.50,
+    "per_job_cash_usd_soft": 0.25,
     "per_job_cash_usd_hard": 0.50,
     "per_job_shadow_usd_soft": 3.00,
     "per_job_shadow_usd_hard": 8.00,
